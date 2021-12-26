@@ -329,30 +329,27 @@ public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
-oauth2Login() DLS 的目标是与说明中的名称保持一致.
+oauth2Login() DSL 的主要目标是与规范中定义的命名紧密结合。
 
-OAuth 2.0 授权框架定义了如下的[协议端点](https://tools.ietf.org/html/rfc6749#section-3):
+OAuth 2.0 授权框架将协议端点定义如下：
 
-授权过程使用了两个授权服务器端点(HTTP 资源)
+授权过程使用两个授权服务器端点（HTTP 资源）：
 
-* 授权端点:被客户端用来让资源所有者以用户代理重定向获取授权
-* 令牌端点:被客户端用来以授权交换令牌,通常是以客户端授权的方式
+授权端点：客户端用于通过用户代理重定向从资源所有者那里获得授权。
 
-以及一个客户端端点:
+令牌端点：客户端用于交换访问令牌的授权许可，通常与客户端身份验证一起使用。
 
-* 重定向端点:被授权服务以资源所有者用户代理用来将包含授权证书的响应返回给客户端.
+以及一个客户端端点：
 
-OpenID Connect  核心 1.0说明定义了如下的用户端点:
+重定向端点：授权服务器使用它通过资源所有者用户代理向客户端返回包含授权凭据的响应。
 
-用户信息端点是一个被OAuth 2.0所保护的资源,返回的认证过的用户的声明.要获取想要的关于用户的
+OpenID Connect Core 1.0 规范定义 UserInfo Endpoint 如下：
 
-声明,客户端通过从Open Connect 认证获取的访问令牌对用户信息端点做出请求.这些声明通常是一个包含键值对的
+UserInfo 端点是一个 OAuth 2.0 受保护资源，它返回有关经过身份验证的最终用户的声明。为了获取请求的有关最终用户的声明，客户端使用通过 OpenID Connect 身份验证获取的访问令牌向 UserInfo 端点发出请求。这些声明通常由包含声明的名称-值对集合的 JSON 对象表示。
 
-JSON 对象.
+以下代码显示了可用于 oauth2Login() DSL 的完整配置选项：
 
-以下的代码展示了一个完整可用的oauth2Login() DSL 配置.
-
-例2. OAuth2 登录配置项
+示例 2. OAuth2 登录配置选项
 
 ```java
 @EnableWebSecurity
@@ -387,11 +384,11 @@ public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
-除了 oauth2Login() DSL之外, XML配置也是支持的.
+除了 oauth2Login() DSL，还支持 XML 配置。
 
-以下的代码展示了security命名空间下的完整的配置项.
+以下代码显示了安全命名空间中可用的完整配置选项：
 
-例3. OAuth 2 登录 XML 配置项
+示例 3. OAuth2 登录 XML 配置选项
 
 ```xml
 <http>
@@ -414,13 +411,329 @@ public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
 
 #### OAuth 2.0 登录页面
 
+默认情况下，OAuth 2.0 登录页面由 DefaultLoginPageGeneratingFilter 自动生成。默认登录页面显示每个配置的 OAuth 客户端及其 ClientRegistration.clientName 作为链接，它能够启动授权请求（或 OAuth 2.0 登录）。
+
+为了让 DefaultLoginPageGeneratingFilter 显示配置的 OAuth 客户端的链接，注册的 ClientRegistrationRepository 还需要实现 Iterable<ClientRegistration>。请参阅 InMemoryClientRegistrationRepository 以供参考。
+每个 OAuth 客户端的链接目标默认如下：
+
+OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI + "/{registrationId}"
+
+以下行显示了一个示例：
+
+```html
+<a href="/oauth2/authorization/google">Google</>
+```
+
+要覆盖默认登录页面，请配置 oauth2Login().loginPage() 和（可选）oauth2Login().authorizationEndpoint().baseUri()。
+
+以下清单显示了一个示例：
+
+示例 4. OAuth2 登录页面配置
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.oauth2Login(oauth2 -> oauth2
+			    .loginPage("/login/oauth2")
+			    ...
+			    .authorizationEndpoint(authorization -> authorization
+			        .baseUri("/login/oauth2/authorization")
+			        ...
+			    )
+			);
+	}
+}
+```
+
+您需要为@Controller 提供能够呈现自定义登录页面的@RequestMapping("/login/oauth2")。
+
+如前所述，配置 oauth2Login().authorizationEndpoint().baseUri() 是可选的。但是，如果您选择对其进行自定义，请确保每个 OAuth 客户端的链接与 authorizationEndpoint().baseUri() 匹配。
+
+以下行显示了一个示例：
+
+```
+<a href="/login/oauth2/authorization/google">Google</a>
+```
+
 #### 重定向端点
+
+重定向端点由授权服务器用于通过资源所有者用户代理将授权响应（包含授权凭证）返回给客户端。
+
+OAuth 2.0 登录利用了授权代码授权。因此，授权凭证就是授权码。
+默认的授权响应 baseUri（重定向端点）是 /login/oauth2/code/*，它在 OAuth2LoginAuthenticationFilter.DEFAULT_FILTER_PROCESSES_URI 中定义。
+
+如果您想自定义授权响应 baseUri，请按照以下示例进行配置：
+
+示例 5. 重定向端点配置
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.oauth2Login(oauth2 -> oauth2
+			    .redirectionEndpoint(redirection -> redirection
+			        .baseUri("/login/oauth2/callback/*")
+			        ...
+			    )
+			);
+	}
+}
+```
+
+您还需要确保 ClientRegistration.redirectUri 与自定义授权响应 baseUri 匹配。
+
+以下清单显示了一个示例：
+
+```java
+return CommonOAuth2Provider.GOOGLE.getBuilder("google")
+	.clientId("google-client-id")
+	.clientSecret("google-client-secret")
+	.redirectUri("{baseUrl}/login/oauth2/callback/{registrationId}")
+	.build();
+```
 
 #### 用户信息端点
 
+UserInfo Endpoint 包括许多配置选项，如以下小节所述：
+
+* 映射用户权限
+
+* OAuth 2.0 用户服务
+
+* OpenID Connect 1.0 用户服务
+
+#####  映射用户权限
+
+在用户成功通过 OAuth 2.0 Provider 进行身份验证后，OAuth2User.getAuthorities()（或 OidcUser.getAuthorities()）可能会映射到一组新的 GrantedAuthority 实例，这些实例将在完成身份验证时提供给 OAuth2AuthenticationToken。
+
+OAuth2AuthenticationToken.getAuthorities() 用于授权请求，例如在 hasRole('USER') 或 hasRole('ADMIN') 中。
+
+映射用户权限时，有几个选项可供选择：
+
+* 使用 GrantedAuthoritiesMapper
+
+* OAuth2UserService 基于委托的策略
+
+###### 使用 GrantedAuthoritiesMapper
+
+提供 GrantedAuthoritiesMapper 的实现并按照以下示例进行配置：
+
+示例 6. 授权权限映射器配置
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.oauth2Login(oauth2 -> oauth2
+			    .userInfoEndpoint(userInfo -> userInfo
+			        .userAuthoritiesMapper(this.userAuthoritiesMapper())
+			        ...
+			    )
+			);
+	}
+
+	private GrantedAuthoritiesMapper userAuthoritiesMapper() {
+		return (authorities) -> {
+			Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
+
+			authorities.forEach(authority -> {
+				if (OidcUserAuthority.class.isInstance(authority)) {
+					OidcUserAuthority oidcUserAuthority = (OidcUserAuthority)authority;
+
+					OidcIdToken idToken = oidcUserAuthority.getIdToken();
+					OidcUserInfo userInfo = oidcUserAuthority.getUserInfo();
+
+					// Map the claims found in idToken and/or userInfo
+					// to one or more GrantedAuthority's and add it to mappedAuthorities
+
+				} else if (OAuth2UserAuthority.class.isInstance(authority)) {
+					OAuth2UserAuthority oauth2UserAuthority = (OAuth2UserAuthority)authority;
+
+					Map<String, Object> userAttributes = oauth2UserAuthority.getAttributes();
+
+					// Map the attributes found in userAttributes
+					// to one or more GrantedAuthority's and add it to mappedAuthorities
+
+				}
+			});
+
+			return mappedAuthorities;
+		};
+	}
+}
+```
+
+##### OAuth2UserService 基于委托的策略
+
+与使用 GrantedAuthoritiesMapper 相比，此策略更先进，但是，它也更灵活，因为它允许您访问 OAuth2UserRequest 和 OAuth2User（使用 OAuth 2.0 UserService 时）或 OidcUserRequest 和 OidcUser（使用 OpenID Connect 1.0 UserService 时）。
+
+OAuth2UserRequest（和 OidcUserRequest）为您提供对关联 OAuth2AccessToken 的访问，这在委托人需要从受保护资源获取权限信息然后才能为用户映射自定义权限的情况下非常有用。
+
+以下示例显示如何使用 OpenID Connect 1.0 UserService 实施和配置基于委托的策略：
+
+示例 8. OAuth2UserService 配置
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.oauth2Login(oauth2 -> oauth2
+			    .userInfoEndpoint(userInfo -> userInfo
+			        .oidcUserService(this.oidcUserService())
+			        ...
+			    )
+			);
+	}
+
+	private OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
+		final OidcUserService delegate = new OidcUserService();
+
+		return (userRequest) -> {
+			// Delegate to the default implementation for loading a user
+			OidcUser oidcUser = delegate.loadUser(userRequest);
+
+			OAuth2AccessToken accessToken = userRequest.getAccessToken();
+			Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
+
+			// TODO
+			// 1) Fetch the authority information from the protected resource using accessToken
+			// 2) Map the authority information to one or more GrantedAuthority's and add it to mappedAuthorities
+
+			// 3) Create a copy of oidcUser but use the mappedAuthorities instead
+			oidcUser = new DefaultOidcUser(mappedAuthorities, oidcUser.getIdToken(), oidcUser.getUserInfo());
+
+			return oidcUser;
+		};
+	}
+}
+```
+
+##### OpenID Connect 1.0 用户服务
+
+OidcUserService 是支持 OpenID Connect 1.0 Provider 的 OAuth2UserService 的实现。
+
+OidcUserService 在 UserInfo 端点请求用户属性时利用 DefaultOAuth2UserService。
+
+如果您需要自定义 UserInfo 请求的预处理和/或 UserInfo 响应的后处理，则需要为 OidcUserService.setOauth2UserService() 提供自定义配置的 DefaultOAuth2UserService。
+
+无论您是自定义 OidcUserService 还是为 OpenID Connect 1.0 提供者提供您自己的 OAuth2UserService 实现，您都需要按照以下示例进行配置：
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.oauth2Login(oauth2 -> oauth2
+				.userInfoEndpoint(userInfo -> userInfo
+				    .oidcUserService(this.oidcUserService())
+				    ...
+			    )
+			);
+	}
+
+	private OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
+		...
+	}
+}
+```
+
+
+
 #### ID TOKEN 签名认证
 
+OpenID Connect 1.0 身份验证引入了 ID 令牌，它是一种安全令牌，其中包含有关客户端使用时授权服务器对最终用户进行身份验证的声明。
+
+ID 令牌表示为 JSON Web 令牌 (JWT)，并且必须使用 JSON Web 签名 (JWS) 进行签名。
+
+OidcIdTokenDecoderFactory 提供了一个用于 OidcIdToken 签名验证的 JwtDecoder。默认算法为 RS256，但在客户端注册期间分配时可能会有所不同。对于这些情况，解析器可以配置为返回为特定客户端分配的预期 JWS 算法。
+
+JWS 算法解析器是一个函数，它接受 ClientRegistration 并为客户端返回预期的 JwsAlgorithm，例如。 SignatureAlgorithm.RS256 或 MacAlgorithm.HS256
+
+以下代码显示了如何将 OidcIdTokenDecoderFactory @Bean 配置为所有 ClientRegistration 的默认为 MacAlgorithm.HS256：
+
+```java
+@Bean
+public JwtDecoderFactory<ClientRegistration> idTokenDecoderFactory() {
+	OidcIdTokenDecoderFactory idTokenDecoderFactory = new OidcIdTokenDecoderFactory();
+	idTokenDecoderFactory.setJwsAlgorithmResolver(clientRegistration -> MacAlgorithm.HS256);
+	return idTokenDecoderFactory;
+}
+```
+
+对于 HS256、HS384 或 HS512 等基于 MAC 的算法，与 client-id 对应的 client-secret 用作签名验证的对称密钥。
+如果为 OpenID Connect 1.0 身份验证配置了多个 ClientRegistration，则 JWS 算法解析器可以评估提供的 ClientRegistration 以确定要返回的算法。
+
 #### OpenID Connect 1.0 登出
+
+OpenID Connect 会话管理 1.0 允许使用客户端在提供商处注销最终用户。可用的策略之一是 RP-Initiated Logout。
+
+如果 OpenID 提供者同时支持会话管理和发现，则客户端可以从 OpenID 提供者的发现元数据中获取 end_session_endpoint URL。这可以通过使用 issuer-uri 配置 ClientRegistration 来实现，如下例所示：
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          okta:
+            client-id: okta-client-id
+            client-secret: okta-client-secret
+            ...
+        provider:
+          okta:
+            issuer-uri: https://dev-1234.oktapreview.com
+```
+
+… 以及实现 RP-Initiated Logout 的 OidcClientInitiatedLogoutSuccessHandler 可以配置如下：
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Autowired
+	private ClientRegistrationRepository clientRegistrationRepository;
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.authorizeHttpRequests(authorize -> authorize
+				.anyRequest().authenticated()
+			)
+			.oauth2Login(withDefaults())
+			.logout(logout -> logout
+				.logoutSuccessHandler(oidcLogoutSuccessHandler())
+			);
+	}
+
+	private LogoutSuccessHandler oidcLogoutSuccessHandler() {
+		OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler =
+				new OidcClientInitiatedLogoutSuccessHandler(this.clientRegistrationRepository);
+
+		// Sets the location that the End-User's User Agent will be redirected to
+		// after the logout has been performed at the Provider
+		oidcLogoutSuccessHandler.setPostLogoutRedirectUri("{baseUrl}");
+
+		return oidcLogoutSuccessHandler;
+	}
+}
+```
+
+OidcClientInitiatedLogoutSuccessHandler 支持 {baseUrl} 占位符。如果使用，应用程序的基本 URL，如 https://app.example.org，将在请求时替换它。
 
 ## OAuth2 客户端
 
