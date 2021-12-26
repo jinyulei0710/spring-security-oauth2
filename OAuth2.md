@@ -30,23 +30,224 @@ Spring Boot 2.x 为OAuth 2.0 登录提供完全的自动配置能力.
 
 ##### 设置重定向URI
 
+重定向 URI 是应用程序中的路径，最终用户的用户代理在他们通过 Google 进行身份验证并在同意页面上授予对 OAuth 客户端（在上一步中创建）的访问权限后重定向回该路径。
+
+在“设置重定向 URI”子部分中，确保授权重定向 URI 字段设置为 http://localhost:8080/login/oauth2/code/google。
+
+默认重定向 URI 模板为 {baseUrl}/login/oauth2/code/{registrationId}。 registrationId 是 ClientRegistration 的唯一标识符。
+
 ##### 配置application.yml
+
+现在你有了一个新的 Google OAuth 客户端，您需要配置应用程序以使用 OAuth 客户端进行身份验证流。这样做：
+
+转到 application.yml 并设置以下配置：
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:	
+          google:	
+            client-id: google-client-id
+            client-secret: google-client-secret
+```
+
+例1. OAuth 客户端属性
+
+1. spring.security.oauth2.client.registration 是 OAuth 客户端属性的基本属性前缀。 
+2. 在基本属性前缀之后是 ClientRegistration 的 ID，例如 google。
 
 ##### 启动应用
 
+启动 Spring Boot 2.x 示例并转到 http://localhost:8080。然后，您将被重定向到默认的自动生成的登录页面，该页面显示 Google 的链接。 单击 Google 链接，然后您将被重定向到 Google 进行身份验证。 使用您的 Google 帐户凭据进行身份验证后，显示给您的下一页是同意屏幕。同意屏幕要求您允许或拒绝访问您之前创建的 OAuth 客户端。单击允许以授权 OAuth 客户端访问您的电子邮件地址和基本配置文件信息。 此时，OAuth 客户端会从 UserInfo 端点检索您的电子邮件地址和基本配置文件信息，并建立经过身份验证的会话。
+
 #### Spring Boot 2.0属性对照表
+
+| Spring Boot 2.x                                              | ClientRegistration                                       |
+| :----------------------------------------------------------- | :------------------------------------------------------- |
+| `spring.security.oauth2.client.registration.*[registrationId]*` | `registrationId`                                         |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-id` | `clientId`                                               |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-secret` | `clientSecret`                                           |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-authentication-method` | `clientAuthenticationMethod`                             |
+| `spring.security.oauth2.client.registration.*[registrationId]*.authorization-grant-type` | `authorizationGrantType`                                 |
+| `spring.security.oauth2.client.registration.*[registrationId]*.redirect-uri` | `redirectUri`                                            |
+| `spring.security.oauth2.client.registration.*[registrationId]*.scope` | `scopes`                                                 |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-name` | `clientName`                                             |
+| `spring.security.oauth2.client.provider.*[providerId]*.authorization-uri` | `providerDetails.authorizationUri`                       |
+| `spring.security.oauth2.client.provider.*[providerId]*.token-uri` | `providerDetails.tokenUri`                               |
+| `spring.security.oauth2.client.provider.*[providerId]*.jwk-set-uri` | `providerDetails.jwkSetUri`                              |
+| `spring.security.oauth2.client.provider.*[providerId]*.issuer-uri` | `providerDetails.issuerUri`                              |
+| `spring.security.oauth2.client.provider.*[providerId]*.user-info-uri` | `providerDetails.userInfoEndpoint.uri`                   |
+| `spring.security.oauth2.client.provider.*[providerId]*.user-info-authentication-method` | `providerDetails.userInfoEndpoint.authenticationMethod`  |
+| `spring.security.oauth2.client.provider.*[providerId]*.user-name-attribute` | `providerDetails.userInfoEndpoint.userNameAttributeName` |
+
+通过指定 spring.security.oauth2.client.provider.[providerId].issuer-uri 属性，可以使用 OpenID Connect Provider 的 Configuration 端点或 Authorization Server 的 Metadata 端点的发现来初始配置 ClientRegistration。
 
 #### CommonOAuth2Provider
 
+CommonOAuth2Provider 为许多知名提供商预定义了一组默认客户端属性：Google、GitHub、Facebook 和 Okta。 例如，provider 的 authorization-uri、token-uri 和 user-info-uri 不会经常更改。因此，提供默认值以减少所需的配置是有意义的。 如前所述，当我们配置 Google 客户端时，只需要 client-id 和 client-secret 属性。 以下清单显示了一个示例：
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: google-client-id
+            client-secret: google-client-secret
+```
+
+客户端属性的自动默认设置在这里可以无缝工作，因为 registrationId (google) 与 CommonOAuth2Provider 中的 GOOGLE 枚举（不区分大小写）匹配。
+
+对于您可能想要指定不同的 registrationId（例如 google-login）的情况，您仍然可以通过配置 provider 属性来利用客户端属性的自动默认设置。 以下清单显示了一个示例：
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google-login:	
+            provider: google	
+            client-id: google-client-id
+            client-secret: google-client-secret
+```
+
+registrationId 设置为 google-login。 provider 属性设置为 google，这将利用 CommonOAuth2Provider.GOOGLE.getBuilder() 中设置的客户端属性的自动默认设置。
+
 #### 配置自定义提供者属性
+
+有一些 OAuth 2.0 提供者支持多租户，这会导致每个租户（或子域）的协议端点不同。 例如，在 Okta 注册的 OAuth 客户端被分配到特定的子域并拥有自己的协议端点。 对于这些情况，Spring Boot 2.x 提供了以下用于配置自定义提供程序属性的基本属性：spring.security.oauth2.client.provider.[providerId]。 以下清单显示了一个示例：
+
+```
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          okta:
+            client-id: okta-client-id
+            client-secret: okta-client-secret
+        provider:
+          okta:	
+            authorization-uri: https://your-subdomain.oktapreview.com/oauth2/v1/authorize
+            token-uri: https://your-subdomain.oktapreview.com/oauth2/v1/token
+            user-info-uri: https://your-subdomain.oktapreview.com/oauth2/v1/userinfo
+            user-name-attribute: sub
+            jwk-set-uri: https://your-subdomain.oktapreview.com/oauth2/v1/keys
+```
+
+基本属性 (spring.security.oauth2.client.provider.okta) 允许自定义配置协议端点位置。
 
 #### 覆盖Spring Boot 2.x 自动配置
 
+用于 OAuth 客户端支持的 Spring Boot 2.x 自动配置类是 OAuth2ClientAutoConfiguration。 它执行以下任务： 从配置的 OAuth 客户端属性注册由 ClientRegistration(s) 组成的 ClientRegistrationRepository @Bean。 提供 WebSecurityConfigurerAdapter @Configuration 并通过 httpSecurity.oauth2Login() 启用 OAuth 2.0 登录。 如果您需要根据您的特定要求覆盖自动配置，您可以通过以下方式进行： 注册一个 ClientRegistrationRepository @Bean 提供一个 WebSecurityConfigurerAdapter 完全覆盖自动配置
+
 ##### 注册一个ClientRegistrationRepository @Bean
+
+以下示例显示了如何注册 ClientRegistrationRepository @Bean：
+
+```java
+@Configuration
+public class OAuth2LoginConfig {
+
+	@Bean
+	public ClientRegistrationRepository clientRegistrationRepository() {
+		return new InMemoryClientRegistrationRepository(this.googleClientRegistration());
+	}
+
+	private ClientRegistration googleClientRegistration() {
+		return ClientRegistration.withRegistrationId("google")
+			.clientId("google-client-id")
+			.clientSecret("google-client-secret")
+			.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+			.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+			.redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+			.scope("openid", "profile", "email", "address", "phone")
+			.authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+			.tokenUri("https://www.googleapis.com/oauth2/v4/token")
+			.userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+			.userNameAttributeName(IdTokenClaimNames.SUB)
+			.jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
+			.clientName("Google")
+			.build();
+	}
+}
+```
+
+
 
 ##### 提供一个WebSecurityConfigurerAdapter
 
+下面的例子展示了如何提供一个带有@EnableWebSecurity 的 WebSecurityConfigurerAdapter 并通过 httpSecurity.oauth2Login() 启用 OAuth 2.0 登录：
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.authorizeHttpRequests(authorize -> authorize
+				.anyRequest().authenticated()
+			)
+			.oauth2Login(withDefaults());
+	}
+}
+```
+
+示例 2. OAuth2 登录配置
+
 ##### 完全覆盖自动配置
+
+以下示例显示了如何通过注册 ClientRegistrationRepository @Bean 并提供 WebSecurityConfigurerAdapter 来完全覆盖自动配置。
+
+```java
+@Configuration
+public class OAuth2LoginConfig {
+
+	@EnableWebSecurity
+	public static class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			http
+				.authorizeHttpRequests(authorize -> authorize
+					.anyRequest().authenticated()
+				)
+				.oauth2Login(withDefaults());
+		}
+	}
+
+	@Bean
+	public ClientRegistrationRepository clientRegistrationRepository() {
+		return new InMemoryClientRegistrationRepository(this.googleClientRegistration());
+	}
+
+	private ClientRegistration googleClientRegistration() {
+		return ClientRegistration.withRegistrationId("google")
+			.clientId("google-client-id")
+			.clientSecret("google-client-secret")
+			.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+			.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+			.redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+			.scope("openid", "profile", "email", "address", "phone")
+			.authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+			.tokenUri("https://www.googleapis.com/oauth2/v4/token")
+			.userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+			.userNameAttributeName(IdTokenClaimNames.SUB)
+			.jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
+			.clientName("Google")
+			.build();
+	}
+}
+```
+
+
+
+示例 3. 覆盖自动配置
 
 #### 非Spring Boot 2.x项目的Java配置
 
