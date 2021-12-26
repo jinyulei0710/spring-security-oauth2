@@ -2,8 +2,6 @@
 
 Spring Security 提供了完整的OAuth 2支持.这部分内容讲的是如何把OAuth集成到基于Servlet的应用.
 
-
-
 ## OAuth2 登录
 
 OAuth 2.0 登录特性给应用提供了让用户使用已有账号登录的能力,例如GitHub和Google的账号。OAuth 2.0登录实现的就是
@@ -21,6 +19,14 @@ Spring Boot 2.x 为OAuth 2.0 登录提供完全的自动配置能力.
 这部分内容展示了[OAuth 2.0 登录样例](https://github.com/spring-projects/spring-security-samples/tree/main/servlet/spring-boot/java/oauth2/login)是如何使用Google作为认证服务提供者的.
 
 ##### 初始化
+
+为了把Google 2.0认证系统用作登录，你必须在Ｇoogle API控制台设置好一个项目，从而你才能获取OAuth2.0凭证。
+
+注意，[Google的OAuth 2.0认证实现]()是遵循 OpenID 连接1.0标准的规范的并且是[OpenID认证的](https://openid.net/certification/).
+
+按照OpenID 连接页面上的指示，找到　"Setting up OAuth 2.0"
+
+在完成 Obtain OAuth 2.0 credentials 指令之后，你现在有了一个新的由Client ID和Client Secret组成的ＯAuth 客户端。
 
 ##### 设置重定向URI
 
